@@ -3,32 +3,32 @@ import collection.mutable.ListBuffer
 import collection.mutable.Stack
 
 object Macros {
-  // macro definition is a normal function with anything you fancy in its signature
-  // its body, though, is nothing more that a reference to an implementation
+  // マクロ定義のシグネチャは好きなパラメータを受け取る普通の関数と同じだ。
+  // しかし、本文は実装への参照のみとなる。
   def printf(format: String, params: Any*): Unit = macro printf_impl
 
-  // macro implementation must correspond to macro definitions that use it
-  // required signature is quite involved, but don't be scared
-  // if the compiler is unhappy, it will print the signature it wants in the error message
+  // マクロ実装のシグネチャはマクロ定義のものと対応する必要がある。
+  // 一見複雑に見えるが、心配する必要はない。
+  // もしコンパイラが不満なら、エラーメッセージで必要なシグネチャを教えてくれる。
   def printf_impl(c: Context)(format: c.Expr[String], params: c.Expr[Any]*): c.Expr[Unit] = {
-    // compiler API is exposed in scala.reflect.makro.Context
-    // its most important part, reflection API, is accessible via c.mirror
-    // it's customary to import c.mirror._, because it includes a lot of routinely used stuff
+    // コンパイラ API は scala.reflect.makro.Context を通じて公開されている。
+    // その最も重要な部分であるリフレクション API は c.universe よりアクセスすることができる。
+    // 頻繁に使われるものの多くが含まれているため、import c.universe._ をインポートするのが慣例だ。
     import c.universe._
 
-    // first of all, we parse the provided format string
-    // macros run during the compile-time, so they operate on trees, not on values
-    // this means that the format parameter of our macro will be a compile-time literal
-    // not an object of type java.lang.String
-    // this also means that the code below won't work for printf("%d" + "%d", ...)
-    // because in that case format won't be a string literal
-    // but rather an AST that represents addition of two string literals
-    // adjusting the macro to work for arbitrary stuff is left as an excercise for the reader
+    // まず、渡された format 文字列をパースする。
+    // マクロはコンパイル時に動作するため、値ではなく構文木に作用する。
+    // そのため、このマクロに渡される format パラメータはコンパイル時のリテラルであり、
+    // java.lang.String 型のオブジェクトではない。
+    // これはまた、以下のコードでは printf("%d" + "%d", ...) では動作しないことを意味する。
+    // なぜならこの場合は format は文字リテラルではなく 
+    // 2つの文字リテラルの連結を表す AST となるからだ。
+    // 任意のもので動作するようにこのマクロを改良するのは読者への練習問題としよう。
     val Literal(Constant(s_format: String)) = format.tree
 
-    // here we jump straight into the compiler
-    // the paragraph below creates temporary vals that precompute expressions being formatted
-    // to learn more about dynamic generation of Scala code, take a look at our slides:
+    // ここからコンパイラに突入する。
+    // すぐ下のコードでは一時的な val を作ってフォーマットされる式を事前に計算する。
+    // 動的な Scala コードの生成に関してもっと詳しく知りたい場合は以下のスライドを参照:
     // http://scalamacros.org/talks/2012-04-28-MetaprogrammingInScala210.pdf
     val evals = ListBuffer[ValDef]()
     def precompute(value: Tree, tpe: Type): Ident = {
@@ -37,12 +37,12 @@ object Macros {
       Ident(freshName)
     }
 
-    // nothing fancy here, just bread and butter AST manipulations
-    // extract trees from parameters of a macro, decompose/analyze and transform them
-    // note how we get a hold of Scala types that correspond to Int and String
-    // this works for a small set of core types
-    // but in most cases you will have to create types by yourself
-    // read up the aforementioned slides to learn more about types
+    // ここはありがちな AST に対する操作で、特に難しいことは行なっていない。
+    // マクロのパラメータから構文木を抽出し、分解/解析して変換する。
+    // Int と String に対応する Scala 型を手に入れている方法に注意してほしい。
+    // これはコアとなるごく一部の型ではうまくいくが、
+    // ほとんどの場合は自分で型を作る必要がある。
+    // 型に関しての詳細も上記のスライド参照。
     val paramsStack = Stack[Tree]((params map (_.tree)): _*)
     val refs = s_format.split("(?<=%[\\w%])|(?=%[\\w%])") map {
       case "%d" => precompute(paramsStack.pop, typeOf[Int])
@@ -51,9 +51,9 @@ object Macros {
       case part => Literal(Constant(part))
     }
 
-    // now we combine all the code we have generated into a Block
-    // note the call to reify, which provides a shortcut for creating ASTs
-    // learn more about reify in our documentation
+    // そして最後に生成したコードの全てを Block へと組み合わせる。
+    // 注目してほしいのは reify の呼び出しだ。AST を手っ取り早く作成する方法を提供している。
+    // reify の詳細はドキュメンテーションを参照してほしい。
     val stats = evals ++ refs.map(ref => reify(print(c.Expr[Any](ref).splice)).tree)
     c.Expr[Unit](Block(stats.toList, Literal(Constant(()))))
   }

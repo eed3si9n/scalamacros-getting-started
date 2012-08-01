@@ -1,6 +1,6 @@
-Taken from http://scalamacros.org/documentation/gettingstarted.html.
+http://scalamacros.org/documentation/gettingstarted.html から持ってきた。
 
-To run this, launch sbt 0.11.3:
+走らせるためには sbt 0.11.3 を起動して:
 
     > project app
     > clean
