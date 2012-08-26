@@ -17,17 +17,15 @@ object Macros {
     import treehuggerDSL._
     import c.{universe => u}
 
-    // this is a simple scalac AST => treehugger AST conversion.
-    // currently it handles only the literals.
-    def toTree(tree: u.Tree): Tree = tree match {
-      case u.Literal(u.Constant(value)) => LIT(value)
-    }
+    val bridge = treehugger.MacroBridge(c)
+    def fromMacroTree(tree: c.universe.Tree): Tree = bridge.fromMacroTree(tree.asInstanceOf[bridge.context.universe.Tree])
+    def toMacroTree(tree: Tree): c.universe.Tree = bridge.toMacroTree(tree).asInstanceOf[c.universe.Tree]
 
     // first of all, we parse the provided format string
     // macros run during the compile-time, so they operate on trees, not on values
     // this means that the format parameter of our macro will be a compile-time literal
     // not an object of type java.lang.String.
-    val s_format = toTree(format.tree) match {
+    val s_format = fromMacroTree(format.tree) match {
       case lit: Literal => lit.value.value.toString
     }
 
@@ -53,7 +51,7 @@ object Macros {
     // this works for a small set of core types
     // but in most cases you will have to create types by yourself
     // read up the aforementioned slides to learn more about types
-    val paramsStack = Stack[Tree]((params map (_.tree) map {toTree}): _*)
+    val paramsStack = Stack[Tree]((params map (_.tree) map {fromMacroTree}): _*)
     val refs = s_format.split("(?<=%[\\w%])|(?=%[\\w%])") map {
       case "%d" => precompute(paramsStack.pop, IntClass)
       case "%s" => precompute(paramsStack.pop, StringClass)
@@ -77,7 +75,6 @@ object Macros {
         REF(Predef_print) APPLY(ref)
       })
     )
-    val toMacroTree = treehugger.MacroBridge(c).toMacroTree
-    c.Expr[Unit]((tree transform toMacroTree).asInstanceOf[c.Tree])
+    c.Expr[Unit](toMacroTree(tree))
   }
 }
