@@ -17,9 +17,9 @@ object Macros {
     import treehuggerDSL._
     import c.{universe => u}
 
-    val bridge = treehugger.MacroBridge(c)
-    def fromMacroTree(tree: c.universe.Tree): Tree = bridge.fromMacroTree(tree.asInstanceOf[bridge.context.universe.Tree])
-    def toMacroTree(tree: Tree): c.universe.Tree = bridge.toMacroTree(tree).asInstanceOf[c.universe.Tree]
+    val bridge = treehugger.MacroBridge[c.type](c)
+    def fromMacroTree(tree: c.universe.Tree): Tree = bridge.fromMacroTree(tree)
+    def toMacroTree(tree: Tree): c.universe.Tree = bridge.toMacroTree(tree)
 
     // first of all, we parse the provided format string
     // macros run during the compile-time, so they operate on trees, not on values
