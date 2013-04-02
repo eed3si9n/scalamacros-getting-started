@@ -6,7 +6,7 @@ object Builds extends Build {
   lazy val buildSettings = Defaults.defaultSettings ++ Seq(
     version := "0.1.0",
     organization := "com.example",
-    scalaVersion := "2.10.0-M6"
+    scalaVersion := "2.10.1"
   )
 
   lazy val root = Project("root", file("."),
